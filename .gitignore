@@ -1,0 +1,7 @@
+# Python build artifacts
+__pycache__/
+*.pyc
+
+# Rosbags (large binaries kept out of git)
+bags/
+*.bag

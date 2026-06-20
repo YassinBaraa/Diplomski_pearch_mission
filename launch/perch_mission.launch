@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="bind_ip"    default="0.0.0.0" />
+  <arg name="bind_port"  default="5005" />
+
+  <!-- UDP receiver: listens for JSON packets, publishes /perch/error_x, error_y, tof -->
+  <node pkg="pearch_mission" type="udp_receiver_node.py" name="udp_receiver" output="screen">
+    <param name="bind_ip"   value="$(arg bind_ip)" />
+    <param name="bind_port" value="$(arg bind_port)" />
+    <param name="timeout"   value="0.5" />
+  </node>
+
+  <!-- Perch controller: aligns UAV (y/z) then approaches forward (x) -->
+  <node pkg="pearch_mission" type="perch_controller_node.py" name="perch_controller" output="screen">
+    <param name="gain"          value="0.005" />   <!-- m per error-unit -->
+    <param name="z_step"        value="0.005" />   <!-- forward approach step (clamped to min_step) -->
+    <param name="err_thresh"    value="10.0" />    <!-- combined error for "aligned" -->
+    <param name="tof_thresh"    value="200.0" />   <!-- mm, TOF threshold to perch -->
+    <param name="rate"          value="30.0" />    <!-- loop Hz -->
+    <param name="min_step"      value="0.10" />    <!-- m, tracker minimum accepted move -->
+    <param name="cmd_rate"      value="1.0" />     <!-- Hz, committed setpoints per second -->
+    <param name="perch_drop"    value="0.40" />    <!-- m below perch point before climbing -->
+    <param name="perch_climb"   value="0.60" />    <!-- m to climb up to engage gripper -->
+    <param name="odom_topic"    value="/red/vrpn_client/estimated_odometry" />
+    <param name="position_hold_srv"   value="/red/position_hold" />
+    <param name="call_position_hold"  value="true" />
+  </node>
+</launch>
