@@ -11,21 +11,32 @@ Produces in OUT_DIR:
     perch_overview.png  - all of the above stacked, shared time axis
 """
 
+import glob
 import os
 import sys
 import rosbag
 import matplotlib
 matplotlib.use('Agg')  # headless: render to file, no X display needed
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers '3d' projection)
 
-DEFAULT_BAG = '/root/uav_ws/src/pearch_mission/bags/2026-06-12-11-34-40.bag'
-DEFAULT_OUT = '/root/uav_ws/src/pearch_mission/plot'
+PKG_DIR = '/root/uav_ws/src/pearch_mission'
+BAGS_DIR = os.path.join(PKG_DIR, 'bags')
+DEFAULT_OUT = os.path.join(PKG_DIR, 'plot')
 
 ODOM_TOPIC = '/red/vrpn_client/estimated_odometry'
 
 
+def newest_bag():
+    """Newest .bag in the package bags/ folder (default when none given)."""
+    bags = glob.glob(os.path.join(BAGS_DIR, '*.bag'))
+    if not bags:
+        sys.exit(f"No .bag found in {BAGS_DIR}; pass a bag path as the first argument.")
+    return max(bags, key=os.path.getmtime)
+
+
 def main():
-    bag_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BAG
+    bag_path = sys.argv[1] if len(sys.argv) > 1 else newest_bag()
     out_dir = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUT
     os.makedirs(out_dir, exist_ok=True)
 
@@ -114,6 +125,22 @@ def main():
     ax.axis('equal'); ax.grid(True); ax.legend(loc='best')
     fig.colorbar(sc, ax=ax, label='time [s]')
     fig.tight_layout(); fig.savefig(os.path.join(out_dir, 'optitrack_xy_path.png'), dpi=120)
+    plt.close(fig)
+
+    # --- 6) 3D trajectory (UAV movement) ---
+    fig = plt.figure(figsize=(9, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(ox, oy, oz, c=ot_t, cmap='viridis', s=4)
+    ax.plot(ox, oy, oz, color='gray', lw=0.4, alpha=0.5)
+    if ox:
+        ax.scatter([ox[0]], [oy[0]], [oz[0]], color='lime', s=90, marker='o', label='start')
+        ax.scatter([ox[-1]], [oy[-1]], [oz[-1]], color='red', s=90, marker='X', label='end')
+    ax.set_xlabel('x [m]'); ax.set_ylabel('y [m]'); ax.set_zlabel('z [m]')
+    ax.invert_zaxis()
+    ax.set_title('UAV 3D trajectory (OptiTrack, color = time)')
+    ax.legend(loc='best')
+    fig.colorbar(sc, ax=ax, label='time [s]', shrink=0.6)
+    fig.tight_layout(); fig.savefig(os.path.join(out_dir, 'optitrack_xyz_3d.png'), dpi=120)
     plt.close(fig)
 
     print(f"Saved plots to {out_dir}")
